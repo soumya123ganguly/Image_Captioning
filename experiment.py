@@ -36,11 +36,11 @@ class Experiment(object):
         self.__best_model = None  # Save your best model in this field and use this in test method.
 
         # Init Model
-        self.__model = get_model(config_data, self.__vocab)
+        self.__model = get_model(config_data, self.__vocab).cuda()
 
         # TODO: Set these Criterion and Optimizers Correctly
-        self.__criterion = None
-        self.__optimizer = None
+        self.__criterion = torch.nn.CrossEntropyLoss()
+        self.__optimizer = torch.optim.Adam(self.__model.parameters())
 
         self.__init_model()
 
@@ -84,10 +84,19 @@ class Experiment(object):
     def __train(self):
         self.__model.train()
         training_loss = 0
-
+        
         # Iterate over the data, implement the training function
         for i, (images, captions, _) in enumerate(self.__train_loader):
-            raise NotImplementedError()
+            images = images.cuda()
+            captions = captions.cuda()
+            print(captions.shape)
+            self.__optimizer.zero_grad()
+            prediction = self.__model(images, captions)
+            loss = self.__criterion(prediction, captions)
+            loss.backward()
+            self.__optimizer.step()
+            training_loss += loss.item()
+        training_loss /= len(self.__train_loader)
 
         return training_loss
 
@@ -98,7 +107,12 @@ class Experiment(object):
 
         with torch.no_grad():
             for i, (images, captions, _) in enumerate(self.__val_loader):
-                raise NotImplementedError()
+                images = images.cuda()
+                captions = captions.cuda()
+                prediction = self.__model(images, captions)
+                loss = self.__criterion(prediction, captions)
+                val_loss += loss.item()
+            val_loss /= len(self.__val_loader)
 
         return val_loss
 
@@ -108,16 +122,25 @@ class Experiment(object):
     def test(self):
         self.__model.eval()
         test_loss = 0
-        bleu1 = 0
-        bleu4 = 0
+        bleu1s = 0
+        bleu4s = 0
 
         with torch.no_grad():
             for iter, (images, captions, img_ids) in enumerate(self.__test_loader):
-                raise NotImplementedError()
+                images = images.cuda()
+                captions = captions.cuda()
+                prediction = self.__model(images, captions)
+                loss = self.__criterion(prediction, captions)
+                test_loss += loss.item()
+                bleu1s += bleu1(captions, prediction)
+                bleu4s += bleu4(captions, prediction)
+            test_loss /= len(self.__test_loader)
+            bleu1s /= len(self.__test_loader)
+            bleu4s /= len(self.__test_loader)
 
         result_str = "Test Performance: Loss: {}, Perplexity: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
-                                                                                               bleu1,
-                                                                                               bleu4)
+                                                                                               bleu1s,
+                                                                                               bleu4s)
         self.__log(result_str)
 
         return test_loss, bleu1, bleu4

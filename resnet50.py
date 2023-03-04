@@ -1,6 +1,5 @@
 import torch.nn as nn
 from torchvision import models 
-from torchsummary import summary
 
 #ToDO Fill in the __ values
 class Resnet50FCN(nn.Module):
@@ -8,10 +7,9 @@ class Resnet50FCN(nn.Module):
     def __init__(self):
         super().__init__()
         self.model = models.resnet50(pretrained=True)
-        print(self.model)
         for child in self.model.children():
-          for param in child.parameters():
-            param.requires_grad = False
+            for param in child.parameters():
+                param.requires_grad = False
         self.fc1 = nn.Linear(2048*8*8, 300)
 
 #TODO Complete the forward pass
@@ -27,4 +25,3 @@ class Resnet50FCN(nn.Module):
         return x
 
 net=Resnet50FCN().cuda()
-summary(net, (3, 256, 256))
