@@ -11,7 +11,7 @@ class LSTMCap(nn.Module):
         self.fmodel = Resnet50FCN()
         self.embed = nn.Embedding(len_vocab, 300)
         self.lstm = nn.LSTM(input_size=300, hidden_size=512, num_layers=2, batch_first=True)
-        self.softmax = nn.Softmax(dim=2)
+        self.out = nn.Linear(512, len_vocab)
 
 #TODO Complete the forward pass
     def forward(self, x, yt):
@@ -19,9 +19,9 @@ class LSTMCap(nn.Module):
         x = self.fmodel(x).unsqueeze(1)
         e = self.embed(yt)
         xt = torch.cat((x,e), 1)
-        print(x.shape, e.shape, xt.shape)
         h0 = torch.zeros(2, bs, 512).cuda()
         c0 = torch.zeros(2, bs, 512).cuda()
         y, _ = self.lstm(e, (h0, c0))
-        y = self.softmax(y[:, :-1, :])
+        y = self.out(y)
+        y = y.permute(0, 2, 1)
         return y

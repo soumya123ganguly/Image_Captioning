@@ -89,7 +89,6 @@ class Experiment(object):
         for i, (images, captions, _) in enumerate(self.__train_loader):
             images = images.cuda()
             captions = captions.cuda()
-            print(captions.shape)
             self.__optimizer.zero_grad()
             prediction = self.__model(images, captions)
             loss = self.__criterion(prediction, captions)
@@ -130,6 +129,7 @@ class Experiment(object):
                 images = images.cuda()
                 captions = captions.cuda()
                 prediction = self.__model(images, captions)
+                prediction = torch.argmax(prediction, 2)
                 loss = self.__criterion(prediction, captions)
                 test_loss += loss.item()
                 bleu1s += bleu1(captions, prediction)
@@ -138,7 +138,7 @@ class Experiment(object):
             bleu1s /= len(self.__test_loader)
             bleu4s /= len(self.__test_loader)
 
-        result_str = "Test Performance: Loss: {}, Perplexity: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
+        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
                                                                                                bleu1s,
                                                                                                bleu4s)
         self.__log(result_str)
