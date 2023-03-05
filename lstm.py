@@ -12,7 +12,7 @@ class LSTMCap(nn.Module):
         self.embed = nn.Embedding(len_vocab, 300)
         self.lstm = nn.LSTM(input_size=300, hidden_size=512, num_layers=2, batch_first=True)
         self.out = nn.Linear(512, len_vocab)
-
+        
 #TODO Complete the forward pass
     def forward(self, x, yt):
         bs = len(x)

@@ -129,11 +129,19 @@ class Experiment(object):
                 images = images.cuda()
                 captions = captions.cuda()
                 prediction = self.__model(images, captions)
-                prediction = torch.argmax(prediction, 2)
                 loss = self.__criterion(prediction, captions)
                 test_loss += loss.item()
-                bleu1s += bleu1(captions, prediction)
-                bleu4s += bleu4(captions, prediction)
+                prediction = torch.argmax(prediction, 2)
+                text_target = []
+                text_pred = []
+                for p in captions:
+                    for i in p:
+                        text_pred.append(self.__vocab.idx2word[i.item()].lower())
+                for p in prediction:
+                    for i in p:
+                        text_target.append(self.__vocab.idx2word[i.item()].lower())
+                bleu1s += bleu1([text_target], text_pred)
+                bleu4s += bleu4([text_target], text_pred)
             test_loss /= len(self.__test_loader)
             bleu1s /= len(self.__test_loader)
             bleu4s /= len(self.__test_loader)
