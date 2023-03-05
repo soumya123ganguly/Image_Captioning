@@ -87,9 +87,10 @@ class Experiment(object):
     def __train(self):
         self.__model.train()
         training_loss = 0
-        
+        counter = 0
         # Iterate over the data, implement the training function
         for i, (images, captions, _) in enumerate(self.__train_loader):
+            counter += 1
             images = images.cuda()
             captions = captions.cuda()
             self.__optimizer.zero_grad()
@@ -98,7 +99,7 @@ class Experiment(object):
             loss.backward()
             self.__optimizer.step()
             training_loss += loss.item()
-        training_loss /= len(self.__train_loader)
+        training_loss /= counter
 
         return training_loss
 
@@ -106,7 +107,7 @@ class Experiment(object):
     def __val(self):
         self.__model.eval()
         val_loss = 0
-
+        counter += 1 
         with torch.no_grad():
             for i, (images, captions, _) in enumerate(self.__val_loader):
                 images = images.cuda()
@@ -114,7 +115,8 @@ class Experiment(object):
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
                 val_loss += loss.item()
-            val_loss /= len(self.__val_loader)
+                counter += 1
+            val_loss /= counter
 
         return val_loss
 
@@ -126,14 +128,16 @@ class Experiment(object):
         test_loss = 0
         bleu1s = 0
         bleu4s = 0
-
+        counter = 0
         with torch.no_grad():
             for iter, (images, captions, img_ids) in enumerate(self.__test_loader):
                 images = images.cuda()
                 captions = captions.cuda()
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
+                #print(loss)
                 test_loss += loss.item()
+                counter += 1
                 temp = 1
                 prediction = F.softmax(prediction/temp, dim=1).permute(0,2,1)
                 prediction = Categorical(F.softmax(prediction/temp, dim=1)).sample()
@@ -154,11 +158,13 @@ class Experiment(object):
                         if word not in ['<start>', '<end>', '<pad>', '<unk>']:
                             text_pred.append(self.__vocab.idx2word[i.item()].lower())
                     text_preds.append(text_pred)
-                bleu1s += bleu1([text_target], text_pred)
-                bleu4s += bleu4([text_target], text_pred)
-            test_loss /= len(self.__test_loader)
-            bleu1s /= len(self.__test_loader)
-            bleu4s /= len(self.__test_loader)
+                for i in range(len(text_target)):
+                    bleu1s += bleu1([text_targets[i]], text_preds[i])
+                    bleu4s += bleu4([text_targets[i]], text_preds[i])
+            
+            test_loss /= counter 
+            bleu1s /= counter
+            bleu4s /= counter
 
         result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
                                                                                                bleu1s,
