@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
+from torch.distributions.categorical import Categorical
+
 from datetime import datetime
 
 from caption_utils import *
@@ -40,7 +43,7 @@ class Experiment(object):
 
         # TODO: Set these Criterion and Optimizers Correctly
         self.__criterion = torch.nn.CrossEntropyLoss()
-        self.__optimizer = torch.optim.Adam(self.__model.parameters())
+        self.__optimizer = torch.optim.Adam(self.__model.parameters(), lr=5e-4)
 
         self.__init_model()
 
@@ -131,15 +134,26 @@ class Experiment(object):
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
                 test_loss += loss.item()
-                prediction = torch.argmax(prediction, 2)
-                text_target = []
-                text_pred = []
+                temp = 1
+                prediction = F.softmax(prediction/temp, dim=1).permute(0,2,1)
+                prediction = Categorical(F.softmax(prediction/temp, dim=1)).sample()
+                #print(prediction.shape)
+                text_targets = []
+                text_preds = []
                 for p in captions:
+                    text_target = []
                     for i in p:
-                        text_pred.append(self.__vocab.idx2word[i.item()].lower())
+                        word = self.__vocab.idx2word[i.item()].lower()
+                        if word not in ['<start>', '<end>', '<pad>', '<unk>']:
+                            text_target.append(self.__vocab.idx2word[i.item()].lower())
+                    text_targets.append(text_target)
                 for p in prediction:
+                    text_pred = []
                     for i in p:
-                        text_target.append(self.__vocab.idx2word[i.item()].lower())
+                        word = self.__vocab.idx2word[i.item()].lower()
+                        if word not in ['<start>', '<end>', '<pad>', '<unk>']:
+                            text_pred.append(self.__vocab.idx2word[i.item()].lower())
+                    text_preds.append(text_pred)
                 bleu1s += bleu1([text_target], text_pred)
                 bleu4s += bleu4([text_target], text_pred)
             test_loss /= len(self.__test_loader)
