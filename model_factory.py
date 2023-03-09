@@ -1,4 +1,3 @@
-from clstm import CaptionsLSTM1
 from lstmcap import LSTMCap
 
 # Build and return the model here based on the configuration.
