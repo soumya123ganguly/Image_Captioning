@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 
+import nltk
 from datetime import datetime
 
 from caption_utils import *
@@ -31,19 +32,22 @@ class Experiment(object):
             config_data)
 
         # Setup Experiment
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.__generation_config = config_data['generation']
         self.__epochs = config_data['experiment']['num_epochs']
+        self.__lr = config_data['experiment']['learning_rate']
+        self.__bs = config_data['dataset']['batch_size']      
         self.__current_epoch = 0
         self.__training_losses = []
         self.__val_losses = []
         self.__best_model = None  # Save your best model in this field and use this in test method.
 
         # Init Model
-        self.__model = get_model(config_data, self.__vocab).cuda()
+        self.__model = get_model(config_data, self.__vocab).to(self.device)
 
         # TODO: Set these Criterion and Optimizers Correctly
         self.__criterion = torch.nn.CrossEntropyLoss()
-        self.__optimizer = torch.optim.Adam(self.__model.parameters(), lr=5e-4)
+        self.__optimizer = torch.optim.Adam(self.__model.parameters(), lr=self.__lr)
 
         self.__init_model()
 
@@ -77,9 +81,9 @@ class Experiment(object):
         for epoch in range(start_epoch, self.__epochs):  # loop over the dataset multiple times
             start_time = datetime.now()
             self.__current_epoch = epoch
-            print(epoch)
             train_loss = self.__train()
             val_loss = self.__val()
+            self.test()
             self.__record_stats(train_loss, val_loss)
             self.__log_epoch_stats(start_time)
             self.__save_model()
@@ -90,8 +94,8 @@ class Experiment(object):
         training_loss = 0
         # Iterate over the data, implement the training function
         for i, (images, captions, _) in enumerate(self.__train_loader):
-            images = images.cuda()
-            captions = captions.cuda()
+            images = images.to(self.device)
+            captions = captions.to(self.device)
             self.__optimizer.zero_grad()
             prediction = self.__model(images, captions)
             loss = self.__criterion(prediction, captions)
@@ -108,8 +112,8 @@ class Experiment(object):
         val_loss = 0
         with torch.no_grad():
             for i, (images, captions, _) in enumerate(self.__val_loader):
-                images = images.cuda()
-                captions = captions.cuda()
+                images = images.to(self.device)
+                captions = captions.to(self.device)
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
                 val_loss += loss.item()
@@ -123,49 +127,35 @@ class Experiment(object):
     def test(self):
         self.__model.eval()
         test_loss = 0
-        bleu1s = 0
-        bleu4s = 0
+        bleu1_score = 0
+        bleu4_score = 0
         with torch.no_grad():
             for iter, (images, captions, img_ids) in enumerate(self.__test_loader):
-                images = images.cuda()
-                captions = captions.cuda()
+                images = images.to(self.device)
+                captions = captions.to(self.device)
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
+                #text_preds = self.__model.gen_text_captions(images)
+                text_preds = self.__model.forward_eval(images)
                 test_loss += loss.item()
-                counter += 1
-                temp = 1.1
-                prediction = F.softmax(prediction/temp, dim=1).permute(0,2,1)
-                prediction = Categorical(F.softmax(prediction/temp, dim=1)).sample()
-                text_targets = []
-                text_preds = []
-                for p in captions:
+                for text_pred, img_id in zip(text_preds, img_ids):
                     text_target = []
-                    for i in p:
-                        word = self.__vocab.idx2word[i.item()].lower()
-                        if word not in ['<start>', '<end>', '<pad>', '<unk>']:
-                            text_target.append(self.__vocab.idx2word[i.item()].lower())
-                    text_targets.append(text_target)
-                for p in prediction:
-                    text_pred = []
-                    for i in p:
-                        word = self.__vocab.idx2word[i.item()].lower()
-                        if word not in ['<start>', '<end>', '<pad>', '<unk>']:
-                            text_pred.append(self.__vocab.idx2word[i.item()].lower())
-                    text_preds.append(text_pred)
-                for i in range(len(text_target)):
-                    bleu1s += bleu1([text_targets[i]], text_preds[i])
-                    bleu4s += bleu4([text_targets[i]], text_preds[i])
+                    for ann in self.__coco_test.imgToAnns[img_id]:
+                        caption = ann['caption']
+                        tokens = nltk.tokenize.word_tokenize(str(caption).lower())
+                        text_target.append(tokens)
+                    #print(text_target, text_pred)
+                    bleu1_score += bleu1(text_target, text_pred)
+                    bleu4_score += bleu4(text_target, text_pred)
             
             test_loss /= len(self.__test_loader)
-            bleu1s /= len(self.__test_loader)
-            bleu4s /= len(self.__test_loader)
+            bleu1_score /= (len(self.__test_loader)*self.__bs)
+            bleu4_score /= (len(self.__test_loader)*self.__bs)
 
-        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss,
-                                                                                               bleu1s,
-                                                                                               bleu4s)
+        result_str = "Test Performance: Loss: {}, Bleu1: {}, Bleu4: {}".format(test_loss, bleu1_score, bleu4_score)
         self.__log(result_str)
 
-        return test_loss, bleu1, bleu4
+        return test_loss, bleu1_score, bleu4_score
 
     def __save_model(self):
         root_model_path = os.path.join(self.__experiment_dir, 'latest_model.pt')
