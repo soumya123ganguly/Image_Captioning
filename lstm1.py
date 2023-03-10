@@ -36,7 +36,7 @@ class CaptionsLSTM1(nn.Module):
         pred_caption = None
         if self.captions['deterministic']:
             pred_idc = torch.argmax(pred, 1)
-            pred_caption = [str(self.vocab.idx2word(pred_idx)).lower() for pred_idx in pred_idc]
+            pred_caption = [str(self.vocab.idx2word[pred_idx.item()]).lower() for pred_idx in pred_idc]
         else:
             pred_idc = Categorical(F.softmax(pred/self.captions['temperature'], dim=1)).sample()
             pred_caption = [str(self.vocab.idx2word[pred_idx.item()]).lower() for pred_idx in pred_idc]

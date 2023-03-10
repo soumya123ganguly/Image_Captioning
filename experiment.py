@@ -143,8 +143,19 @@ class Experiment(object):
                         caption = ann['caption']
                         tokens = nltk.tokenize.word_tokenize(str(caption).lower())
                         text_target.append(tokens)
-                    bleu1_score += bleu1(text_target, text_pred)
-                    bleu4_score += bleu4(text_target, text_pred)
+                    check_bleu1 = bleu1(text_target, text_pred)
+                    check_bleu4 = bleu4(text_target, text_pred)
+                    if self.__coco_test.loadImgs(img_id)[0]['file_name'] in ['COCO_val2014_000000285505.jpg', 'COCO_val2014_000000378652.jpg', 'COCO_val2014_000000393056.jpg', 'COCO_val2014_000000232173.jpg', 'COCO_val2014_000000288316.jpg', 'COCO_val2014_000000377706.jpg']:
+                        print(check_bleu1, check_bleu4, text_target, text_pred, self.__coco_test.loadImgs(img_id)[0]['file_name'])
+                        
+                    #if check_bleu1 == 100.0 and check_bleu4 == 100.0:
+                    #    print("=====best======")
+                    #    print(check_bleu1, check_bleu4, text_target, text_pred, self.__coco_test.loadImgs(img_id)[0]['file_name'])
+                    #if check_bleu1 < 20.0:
+                    #    print("=====worst======")
+                    #    print(check_bleu1, check_bleu4, text_target, text_pred, self.__coco_test.loadImgs(img_id)[0]['file_name'])
+                    bleu1_score += check_bleu1 
+                    bleu4_score += check_bleu4
             
             test_loss /= len(self.__test_loader)
             bleu1_score /= (len(self.__test_loader)*self.__bs)
