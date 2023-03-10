@@ -12,15 +12,13 @@ class LSTMCap(nn.Module):
     def __init__(self, vocab):
         super().__init__()
         self.vocab = vocab
-        self.fmodel = Resnet50FCN()
+        self.resnet50 = Resnet50FCN()
         self.embed = nn.Embedding(len(vocab), 300)
         self.lstm = nn.LSTM(input_size=300, hidden_size=512, num_layers=2, batch_first=True)
-        #self.lstm = nn.RNN(input_size=600, hidden_size=512, num_layers=2, batch_first=True, nonlinearity='relu')
         self.out = nn.Linear(512, len(vocab))
         
     def forward(self, x, yt):
-        bs = len(x)
-        x = self.fmodel(x).unsqueeze(1)
+        x = self.resnet50(x).unsqueeze(1)
         e = self.embed(yt)
         xt = torch.cat((x,e), 1)
         y, _ = self.lstm(xt)
@@ -51,7 +49,7 @@ class LSTMCap(nn.Module):
         hidden = torch.zeros(2, 512).cuda()
         cell = torch.zeros(2, 512).cuda()
         
-        text_embedded = self.fmodel(img).unsqueeze(1)
+        text_embedded = self.resnet50(img).unsqueeze(1)
         count = True
         # TODO: opertions on text_lists is not very efficient, consider using index instead of string
         text_lists = [['<start>'] for _ in range(batch_size)]
@@ -80,8 +78,6 @@ class LSTMCap(nn.Module):
             for text_list, text_id in zip(text_lists, text_ids):
                 if text_list[-1] != '<end>':
                     text_list.append(self.vocab.idx2word[int(text_id.item())])
-
         text_lists = [[text for text in text_list if text != '<pad>' and text !=
                        '<start>' and text != '<end>' and text != '<unk>'] for text_list in text_lists]
-
         return text_lists

@@ -83,10 +83,10 @@ class Experiment(object):
             self.__current_epoch = epoch
             train_loss = self.__train()
             val_loss = self.__val()
-            self.test()
             self.__record_stats(train_loss, val_loss)
             self.__log_epoch_stats(start_time)
             self.__save_model()
+            self.test()
 
     # TODO: Perform one training iteration on the whole dataset and return loss value
     def __train(self):
@@ -135,8 +135,7 @@ class Experiment(object):
                 captions = captions.to(self.device)
                 prediction = self.__model(images, captions)
                 loss = self.__criterion(prediction, captions)
-                #text_preds = self.__model.gen_text_captions(images)
-                text_preds = self.__model.forward_eval(images)
+                text_preds = self.__model.gen_text_captions(images)
                 test_loss += loss.item()
                 for text_pred, img_id in zip(text_preds, img_ids):
                     text_target = []
@@ -144,7 +143,6 @@ class Experiment(object):
                         caption = ann['caption']
                         tokens = nltk.tokenize.word_tokenize(str(caption).lower())
                         text_target.append(tokens)
-                    #print(text_target, text_pred)
                     bleu1_score += bleu1(text_target, text_pred)
                     bleu4_score += bleu4(text_target, text_pred)
             
