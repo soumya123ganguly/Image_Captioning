@@ -1,7 +1,5 @@
 # Image Captioning
 
-* TODO: Details specific to the student's implementation to be added by the student 
-
 ## Usage
 
 * Define the configuration for your experiment. See `default.json` to see the structure and available options. You are free to modify and restructure the configuration as per your needs.
@@ -22,3 +20,7 @@
 - vocab.py: A simple Vocabulary wrapper
 - coco_dataset: A simple implementation of `torch.utils.data.Dataset` the Coco Dataset
 - get_datasets.ipynb: A helper notebook to set up the dataset in your workspace
+- lstm1.py: Code for 1st Architecture
+- lstm2.py: Code for 2nd Architecture
+- rnn.py: Code for RNN
+- resnet50.py: Code for resnet50.py
