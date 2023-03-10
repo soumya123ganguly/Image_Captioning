@@ -1,6 +1,6 @@
-from crnn import CaptionsRNN
-from clstm1 import CaptionsLSTM1
-from clstm2 import CaptionsLSTM2
+from rnn import CaptionsRNN
+from lstm1 import CaptionsLSTM1
+from lstm2 import CaptionsLSTM2
 
 # Build and return the model here based on the configuration.
 def get_model(config_data, vocab):
